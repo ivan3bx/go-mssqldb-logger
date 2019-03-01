@@ -3,43 +3,35 @@ package syntaxlogger
 import (
 	"fmt"
 	"os"
-	"strings"
+	"regexp"
 
 	"github.com/alecthomas/chroma/quick"
 	"github.com/fatih/color"
 )
 
 const (
-	THEME = "monokai"
+	theme = "monokai"
 )
 
-type SQLLogger struct {
-}
+var (
+	rxpTxPass = regexp.MustCompile("(?i)^(begin|commit) transaction")
+	rxpTxFail = regexp.MustCompile("(?i)^rollback transaction")
+	rxpSql    = regexp.MustCompile("(?i)(SELECT|UPDATE|INSERT|EXECUTE|@p)")
+)
+
+type SQLLogger struct{}
 
 func (s *SQLLogger) Printf(format string, v ...interface{}) {
-	check := strings.ToLower(format)
 	output := fmt.Sprintf(format, v...)
 
-	if strings.Index(check, "begin transaction") == 0 ||
-		strings.Index(check, "commit transaction") == 0 {
-
-		// transaction start/end
+	switch {
+	case rxpTxPass.MatchString(output):
 		color.New(color.FgHiBlue).Fprintln(os.Stdout, output)
-	} else if strings.Index(check, "rollback transaction") == 0 {
-
-		// transaction rollback
+	case rxpTxFail.MatchString(output):
 		color.New(color.FgRed).Fprintln(os.Stdout, output)
-	} else if strings.Index(check, "select") > -1 ||
-		strings.Index(check, "update") > -1 ||
-		strings.Index(check, "insert") > -1 ||
-		strings.Index(check, "execute") > -1 ||
-		strings.Index(strings.TrimSpace(check), "@p") == 0 {
-
-		// T-SQL
-		quick.Highlight(os.Stdout, output, "Transact-SQL", "terminal", THEME)
-	} else {
-
-		// Anything else
+	case rxpSql.MatchString(output):
+		quick.Highlight(os.Stdout, output, "Transact-SQL", "terminal", theme)
+	default:
 		os.Stdout.WriteString(output)
 	}
 }
