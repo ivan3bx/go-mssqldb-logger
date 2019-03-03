@@ -41,9 +41,8 @@ func (s *SQLLogger) Printf(format string, v ...interface{}) {
 		out      = &strings.Builder{}
 	)
 
-	switch ll := s.Logger.(type) {
-	case *log.Logger:
-		colorize = isLoggerColorEnabled(ll, s.ignoreTTY)
+	if ll, ok := s.Logger.(*log.Logger); ok {
+		colorize = isLoggerColorEnabled(ll.Writer(), s.ignoreTTY)
 	}
 
 	if colorize {
@@ -96,8 +95,8 @@ func (s *SQLLogger) Println(v ...interface{}) {
 	s.Printf(fmt.Sprint(v...))
 }
 
-func isLoggerColorEnabled(ll *log.Logger, ignoreTTY bool) bool {
-	if w, ok := ll.Writer().(*os.File); !ignoreTTY && (!ok || !isatty.IsTerminal(w.Fd())) {
+func isLoggerColorEnabled(writer io.Writer, ignoreTTY bool) bool {
+	if w, ok := writer.(*os.File); !ignoreTTY && (!ok || !isatty.IsTerminal(w.Fd())) {
 		return false
 	}
 
