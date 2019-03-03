@@ -9,10 +9,8 @@ import (
 	"strings"
 
 	"github.com/alecthomas/chroma/quick"
-	mssql "github.com/denisenkom/go-mssqldb"
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -26,10 +24,15 @@ var (
 	rxpSql    = regexp.MustCompile("(?i)^\\s*(DECLARE|SELECT|UPDATE|INSERT|DELETE|EXEC(UTE)?|@p)")
 )
 
+// mssql.Logger interface defined here to avoid direct build-time dependency
+type logger interface {
+	Printf(string, ...interface{})
+	Println(...interface{})
+}
+
 type SQLLogger struct {
-	Logger     mssql.Logger
-	forceColor bool
-	ignoreTTY  bool
+	Logger    logger
+	ignoreTTY bool
 }
 
 func (s *SQLLogger) Printf(format string, v ...interface{}) {
@@ -41,8 +44,6 @@ func (s *SQLLogger) Printf(format string, v ...interface{}) {
 	switch ll := s.Logger.(type) {
 	case *log.Logger:
 		colorize = isLoggerColorEnabled(ll, s.ignoreTTY)
-	case *logrus.Logger:
-		colorize = isLogrusColorEnabled(ll, s.ignoreTTY)
 	}
 
 	if colorize {
@@ -100,19 +101,5 @@ func isLoggerColorEnabled(ll *log.Logger, ignoreTTY bool) bool {
 		return false
 	}
 
-	return true
-}
-
-func isLogrusColorEnabled(ll *logrus.Logger, ignoreTTY bool) bool {
-	if w, ok := ll.Out.(*os.File); !ignoreTTY && (!ok || !isatty.IsTerminal(w.Fd())) {
-		return false
-	}
-
-	switch fmtt := ll.Formatter.(type) {
-	case *logrus.TextFormatter:
-		return !fmtt.DisableColors
-	case *logrus.JSONFormatter:
-		return false
-	}
 	return true
 }

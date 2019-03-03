@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -124,53 +123,4 @@ func TestLogNotColorizedToFile(t *testing.T) {
 
 	output, _ := ioutil.ReadFile(buf.Name())
 	assert.Contains(t, string(output), "SELECT 1")
-}
-
-func TestLogrusFiltering(t *testing.T) {
-	tests := []struct {
-		name      string
-		formatter logrus.Formatter
-		input     string
-		output    string
-	}{
-		{
-			name:      "JSON formatter is not colorized",
-			formatter: &logrus.JSONFormatter{},
-			input:     "SELECT 1;",
-			output:    "SELECT 1;",
-		},
-		{
-			name:      "Text formatter is colorized by default",
-			formatter: &logrus.TextFormatter{},
-			input:     "SELECT 1;",
-			output:    "\\x1b[96m\\x1b[40mSELECT\\x1b[0m",
-		},
-		{
-			name: "Text formatter can suppress color",
-			formatter: &logrus.TextFormatter{
-				DisableColors: true,
-			},
-			input:  "SELECT 1;",
-			output: "SELECT 1;",
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			buf := strings.Builder{}
-			logger := logrus.New()
-			logger.SetOutput(&buf)
-			logger.SetFormatter(tc.formatter)
-
-			log := &SQLLogger{
-				Logger:    logger,
-				ignoreTTY: true,
-			}
-
-			log.Printf(tc.input)
-
-			if !assert.Contains(t, buf.String(), tc.output) {
-				assert.Equal(t, "", buf.String())
-			}
-		})
-	}
 }
